@@ -3,58 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bench Code — Modèles LLM locaux</title>
+<title>Apps générées par IA en local — GLM-4.7</title>
 <style>
-:root{--bg:#0d1117;--card:#161b22;--bd:#30363d;--tx:#e6edf3;--mut:#8b949e;--acc:#2f81f7;--ok:#3fb950;--warn:#d29922}
+:root{--bg:#0d1117;--card:#161b22;--bd:#30363d;--tx:#e6edf3;--mut:#8b949e;--acc:#2f81f7}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
-.wrap{max-width:920px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:1.5rem;margin:0 0 4px}
-.sub{color:var(--mut);margin:0 0 24px;font-size:.95rem}
-table{width:100%;border-collapse:collapse;margin:16px 0 28px;font-size:.9rem}
-th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left}
-th{background:var(--card);color:var(--mut);font-weight:600}
-.win{color:var(--ok);font-weight:700}
-.bad{color:var(--warn)}
-.prog{margin:20px 0 8px;font-size:1.1rem;border-left:3px solid var(--acc);padding-left:10px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-a.btn{flex:1;min-width:120px;text-align:center;padding:14px;border:1px solid var(--bd);border-radius:10px;
-background:var(--card);color:var(--tx);text-decoration:none;font-weight:600;transition:.15s}
-a.btn:active{transform:scale(.97)}
-a.btn:hover{border-color:var(--acc)}
-.m{display:block;font-size:.75rem;color:var(--mut);font-weight:400;margin-top:3px}
-.note{color:var(--mut);font-size:.85rem;margin-top:28px;border-top:1px solid var(--bd);padding-top:14px}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5;background:var(--bg);color:var(--tx)}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:1.5rem;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 26px;font-size:.95rem}
+.badge{display:inline-block;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:4px 12px;font-size:.8rem;color:var(--mut);margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+a.card{padding:18px 14px;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);
+text-decoration:none;font-weight:600;transition:.15s;display:flex;flex-direction:column;gap:4px}
+a.card:active{transform:scale(.97)}
+a.card:hover{border-color:var(--acc)}
+.d{font-size:.78rem;color:var(--mut);font-weight:400}
+.note{color:var(--mut);font-size:.85rem;margin-top:30px;border-top:1px solid var(--bd);padding-top:14px}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>Bench — Quel modèle LLM local code le mieux ?</h1>
-<p class="sub">6 mini-apps générées par 3 modèles tournant en LOCAL (RTX 5070 Ti 16 Go), même prompt. Teste-les, c'est jouable.</p>
+<h1>Mini-apps générées par IA — 100% en local</h1>
+<p class="sub">Codées par <b>GLM-4.7-Flash</b> tournant sur une machine perso (RTX 5070 Ti, sans cloud). Même prompt, code généré automatiquement. Jouables ci-dessous.</p>
+<span class="badge">⚡ IA locale · zéro cloud · juin 2026</span>
 
-<table>
-<tr><th>Modèle</th><th>Vitesse</th><th>Qualité (JS valide + complet)</th></tr>
-<tr><td class="win">qwen2.5-coder 7B 🏆</td><td class="win">~118 tok/s</td><td class="win">6/6 propre</td></tr>
-<tr><td>qwen2.5-coder 14B</td><td>~65 tok/s</td><td>5/6 <span class="bad">(1 bug JS)</span></td></tr>
-<tr><td>GLM-4.7-Flash</td><td class="bad">~4 tok/s (33× lent)</td><td>5/6 <span class="bad">(1 incomplet)</span></td></tr>
-</table>
-<p class="sub">Verdict : <b>qwen2.5-coder 7B</b> = le meilleur compromis local (le + rapide ET le + propre). GLM marche mais 33× plus lent sans gain.</p>
+<div class="grid" id="apps"></div>
 
-<div id="apps"></div>
-
-<p class="note">Apps générées automatiquement par les modèles, non retouchées (sauf complétion d'une troncature). Quelques bugs attendus — c'est le but du test. Bench réalisé sur machine perso, juin 2026.</p>
+<p class="note">Apps générées automatiquement par le modèle, code non retouché. Démo de capacité d'un LLM open-weight en local.</p>
 </div>
 <script>
-const progs=[["memory","Memory (paires)"],["sudoku","Sudoku"],["tetris","Tetris"],["astar","Pathfinding A*"],["markdown","Éditeur Markdown"],["json","Outil JSON"]];
-const models=[["qwen7b","qwen 7B"],["qwen14b","qwen 14B"],["glm","GLM-4.7"]];
+const apps=[
+ ["memory","Memory","jeu de paires, 1-2 joueurs"],
+ ["sudoku","Sudoku","générateur + solveur"],
+ ["tetris","Tetris","jouable, tactile"],
+ ["astar","Pathfinding A*","labyrinthe animé"],
+ ["json","Outil JSON","format + arbre"]
+];
 const c=document.getElementById('apps');
-for(const [id,name] of progs){
-  const h=document.createElement('div');h.className='prog';h.textContent=name;c.appendChild(h);
-  const r=document.createElement('div');r.className='row';
-  for(const [m,lbl] of models){
-    const a=document.createElement('a');a.className='btn';a.href=`./${id}_${m}.html`;a.target='_blank';a.rel='noopener';
-    a.innerHTML=`Ouvrir<span class="m">${lbl}</span>`;r.appendChild(a);
-  }
-  c.appendChild(r);
+for(const [id,name,desc] of apps){
+ const a=document.createElement('a');a.className='card';a.href=`./${id}_glm.html`;a.target='_blank';a.rel='noopener';
+ a.innerHTML=`${name}<span class="d">${desc}</span>`;c.appendChild(a);
 }
 </script>
 </body>
