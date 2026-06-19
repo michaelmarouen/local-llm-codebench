@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur JSON Professionnel</title>
+    <style>
+        :root {
+            --bg-body: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-input: #2d2d2d;
+            --border: #333;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --accent: #4caf50;
+            --accent-hover: #45a049;
+            --error: #ff5252;
+            --warning: #ffb74d;
+            --font-code: 'Menlo', 'Monaco', 'Courier New', monospace;
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 10px 1rem;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: #3d3d3d;
+            border-color: #555;
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        button.primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Main Layout */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            main {
+                flex-direction: row;
+            }
+        }
+
+        /* Input Section */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        .label-bar {
+            background-color: #252525;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        textarea {
+            flex: 1;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: none;
+            padding: 1rem;
+            font-family: var(--font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+
+        textarea:focus {
+            background-color: #303030;
+        }
+
+        /* Output Section */
+        .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        #json-tree {
+            flex: 1;
+            padding: 1rem;
+            overflow: auto;
+            font-family: var(--font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap; /* Permet le retour à la ligne pour le texte */
+        }
+
+        /* Syntax Highlighting Colors */
+        .key { color: #9cdcfe; }
+        .string { color: #ce9178; }
+        .number { color: #b5cea8; }
+        .boolean { color: #569cd6; }
+        .null { color: #569cd6; }
+
+        /* Tree View Specifics */
+        .json-item {
+            display: flex;
+            align-items: flex-start;
+            margin-left: 20px;
+            position: relative;
+        }
+
+        .json-item::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: #444;
+        }
+
+        .json-item:last-child::before {
+            display: none;
+        }
+
+        .toggle-btn {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: 2px;
+            font-size: 10px;
+            user-select: none;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+
+        .toggle-btn:hover {
+            color: var(--text-main);
+            background-color: #444;
+        }
+
+        .toggle-btn.expanded::after {
+            content: '−';
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .toggle-btn.collapsed::after {
+            content: '+';
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .collapsible-content {
+            margin-left: 20px;
+            border-left: 1px solid #333;
+            padding-left: 10px;
+        }
+
+        .collapsible-content.hidden {
+            display: none;
+        }
+
+        /* Error Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.visible {
+            opacity: 1;
+        }
+
+        .toast.error {
+            background-color: #5c1b1b;
+            border: 1px solid var(--error);
+            color: #ffcdd2;
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-body);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .toolbar {
+                justify-content: stretch;
+            }
+            button {
+                flex: 1;
+                justify-content: center;
+            }
+            .json-item {
+                margin-left: 10px;
+            }
+            .json-item::before {
+                left: -10px;
+            }
+            .collapsible-content {
+                margin-left: 10px;
+                border-left: 1px solid #333;
+                padding-left: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+            JSON Editor
+        </h1>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">v1.0</div>
+    </header>
+
+    <div class="toolbar">
+        <button id="btn-format" class="primary">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M11,17H13V15H11V17M11,13H13V7H11V13Z" /></svg>
+            Formater
+        </button>
+        <button id="btn-minify">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M11,17H13V15H11V17M11,13H13V7H11V13Z" /></svg>
+            Minifier
+        </button>
+        <button id="btn-clear">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+            Effacer
+        </button>
+    </div>
+
+    <main>
+        <div class="editor-container">
+            <div class="label-bar">
+                <span>Entrée (JSON)</span>
+                <span id="status-indicator" style="color: var(--accent);">En attente</span>
+            </div>
+            <textarea id="input-json" placeholder="Collez votre JSON ici..."></textarea>
+        </div>
+
+        <div class="preview-container">
+            <div class="label-bar">
+                <span>Aperçu Arborescent</span>
+                <span id="node-count">0 nœuds</span>
+            </div>
+            <div id="json-tree"></div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast">
+        <span class="toast-icon">⚠️</span>
+        <span id="toast-message">Erreur</span>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const inputJson = document.getElementById('input-json');
+        const jsonTree = document.getElementById('json-tree');
+        const btnFormat = document.getElementById('btn-format');
+        const btnMinify = document.getElementById('btn-minify');
+        const btnClear = document.getElementById('btn-clear');
+        const statusIndicator = document.getElementById('status-indicator');
+        const nodeCount = document.getElementById('node-count');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // --- State ---
+        let currentData = null;
+
+        // --- Event Listeners ---
+        btnFormat.addEventListener('click', formatJson);
+        btnMinify.addEventListener('click', minifyJson);
+        btnClear.addEventListener('click', clearAll);
+        
+        // Auto-update on input (debounced)
+        let timeoutId;
+        inputJson.addEventListener('input', () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                validateAndRender();
+            }, 300);
+        });
+
+        // --- Core Functions ---
+
+        function clearAll() {
+            inputJson.value = '';
+            jsonTree.innerHTML = '';
+            currentData = null;
+            statusIndicator.textContent = 'En attente';
+            statusIndicator.style.color = 'var(--text-muted)';
+            nodeCount.textContent = '0 nœuds';
+        }
+
+        function showToast(msg, isError = true) {
+            toastMessage.textContent = msg;
+            toast.className = isError ? 'toast error visible' : 'toast visible';
+            setTimeout(() => {
+                toast.className = 'toast'; // Hide after 3s
+            }, 3000);
+        }
+
+        function validateAndRender() {
+            const raw = inputJson.value.trim();
+            if (!raw) {
+                jsonTree.innerHTML = '';
+                statusIndicator.textContent = 'En attente';
+                statusIndicator.style.color = 'var(--text-muted)';
+                nodeCount.textContent = '0 nœuds';
+                return;
+            }
+
+            try {
+                currentData = JSON.parse(raw);
+                statusIndicator.textContent = 'Valide';
+                statusIndicator.style.color = 'var(--accent)';
+                renderTree(currentData);
+                nodeCount.textContent = countNodes(currentData) + ' nœuds';
+            } catch (e) {
+                statusIndicator.textContent = 'Erreur';
+                statusIndicator.style.color = 'var(--error)';
+                // Don't clear the tree on partial input, just show status
+                // Or we could clear it to indicate invalid state
+                // jsonTree.innerHTML = `<div style="color:var(--error)">Erreur de syntaxe</div>`;
+            }
+        }
+
+        function formatJson() {
+            const raw = inputJson.value.trim();
+            if (!raw) return;
+
+            try {
+                const obj = JSON.parse(raw);
+                inputJson.value = JSON.stringify(obj, null, 2);
+                validateAndRender(); // Re-render tree
+            } catch (e) {
+                showToast("JSON invalide. Impossible de formater.", true);
+            }
+        }
+
+        function minifyJson() {
+            const raw = inputJson.value.trim();
+            if (!raw) return;
+
+            try {
+                const obj = JSON.parse(raw);
+                inputJson.value = JSON.stringify(obj);
+                validateAndRender(); // Re-render tree
+            } catch (e) {
+                showToast("JSON invalide. Impossible de minifier.", true);
+            }
+        }
+
+        // --- Tree Rendering Logic ---
+
+        function renderTree(data) {
+            jsonTree.innerHTML = '';
+            const container = document.createElement('div');
+            container.appendChild(createNode(data));
+            jsonTree.appendChild(container);
+        }
+
+        function createNode(value) {
+            const div = document.createElement('div');
+            div.className = 'json-item';
+
+            // Type detection
+            const type = typeof value;
+            let content = '';
+
+            if (type === 'string') {
+                content = `<span class="string">"${escapeHtml(value)}"</span>`;
+            } else if (type === 'number') {
+                content = `<span class="number">${value}</span>`;
+            } else if (type === 'boolean') {
+                content = `<span class="boolean">${value}</span>`;
+            } else if (type === 'null') {
+                content = `<span class="null">null</span>`;
+            } else if (type === 'object') {
+                if (Array.isArray(value)) {
+                    if (value.length === 0) {
+                        content = `<span class="string">[]</span>`;
+                    } else {
+                        // Array
+                        const toggle = document.createElement('span');
+                        toggle.className = 'toggle-btn expanded';
+                        toggle.onclick = () => toggleVisibility(toggle, contentDiv);
+                        content = `[${value.length}]`;
+                        
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'collapsible-content';
+                        
+                        value.forEach((item, index) => {
+                            const itemNode = createNode(item);
+                            // Remove margin-left from children to fix alignment
+                            itemNode.style.marginLeft = '0'; 
+                            contentDiv.appendChild(itemNode);
+                        });
+
+                        div.appendChild(toggle);
+                        div.appendChild(document.createTextNode(content));
+                        div.appendChild(contentDiv);
+                        return div; // Return early for arrays
+                    }
+                } else {
+                    // Object
+                    const keys = Object.keys(value);
+                    if (keys.length === 0) {
+                        content = `<span class="string">{}</span>`;
+                    } else {
+                        // Object
+                        const toggle = document.createElement('span');
+                        toggle.className = 'toggle-btn expanded';
+                        toggle.onclick = () => toggleVisibility(toggle, contentDiv);
+                        content = `{${keys.length}}`;
+
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'collapsible-content';
+
+                        keys.forEach(key => {
+                            const keySpan = document.createElement('span');
+                            keySpan.className = 'key';
+                            keySpan.textContent = `${escapeHtml(key)}: `;
+                            
+                            const itemNode = createNode(value[key]);
+                            // Remove margin-left from children
+                            itemNode.style.marginLeft = '0';
+                            
+                            contentDiv.appendChild(keySpan);
+                            contentDiv.appendChild(itemNode);
+                        });
+
+                        div.appendChild(toggle);
+                        div.appendChild(document.createTextNode(content));
+                        div.appendChild(contentDiv);
+                        return div; // Return early for objects
+                    }
+                }
+            }
+
+            div.appendChild(document.createTextNode(content));
+            return div;
+        }
+
+        function toggleVisibility(btn, contentDiv) {
+            if (contentDiv.classList.contains('hidden')) {
+                contentDiv.classList.remove('hidden');
+                btn.classList.remove('collapsed');
+                btn.classList.add('expanded');
+            } else {
+                contentDiv.classList.add('hidden');
+                btn.classList.remove('expanded');
+                btn.classList.add('collapsed');
+            }
+        }
+
+        function countNodes(data) {
+            if (typeof data !== 'object' || data === null) return 1;
+            let count = 1;
+            if (Array.isArray(data)) {
+                data.forEach(item => count += countNodes(item));
+            } else {
+                Object.values(data).forEach(item => count += countNodes(item));
+            }
+            return count;
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return text;
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize with empty state
+        clearAll();
+
+    </script>
+</body>
+</html>

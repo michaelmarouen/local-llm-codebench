@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .game-container {
+            width: 90%;
+            max-width: 600px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .card {
+            width: 100%;
+            height: 100px;
+            background-color: #333;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 200ms ease-in-out;
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card svg {
+            width: 50px;
+            height: 50px;
+            fill: #ffffff;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .player-score {
+            font-size: 18px;
+        }
+        .winner-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        .winner-screen.active {
+            display: flex;
+        }
+        .winner-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .replay-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer"></div>
+    <div class="controls">
+        <button onclick="startGame(1)">1 Player</button>
+        <button onclick="startGame(2)">2 Players</button>
+    </div>
+    <div class="winner-screen" id="winnerScreen">
+        <div class="winner-text" id="winnerText"></div>
+        <button class="replay-button" onclick="resetGame()">Rejouer</button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const winnerScreen = document.getElementById('winnerScreen');
+        const winnerText = document.getElementById('winnerText');
+
+        let cards = [];
+        let selectedCards = [];
+        let playerScores = [0, 0];
+        let currentPlayer = 1;
+        let startTime;
+
+        function createCard(id) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.dataset.id = id;
+            card.addEventListener('click', flipCard);
+
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute("width", "100%");
+            rect.setAttribute("height", "100%");
+            rect.setAttribute("fill", `hsl(${id * 60}, 100%, 50%)`);
+            svg.appendChild(rect);
+            card.appendChild(svg);
+
+            return card;
+        }
+
+        function startGame(players) {
+            gameContainer.innerHTML = '';
+            cards = [];
+            selectedCards = [];
+            playerScores = [0, 0];
+            currentPlayer = 1;
+
+            for (let i = 0; i < 8; i++) {
+                const card1 = createCard(i);
+                const card2 = createCard(i);
+                cards.push(card1, card2);
+            }
+
+            shuffle(cards);
+
+            cards.forEach(card => gameContainer.appendChild(card));
+
+            if (players === 1) {
+                startTime = Date.now();
+            }
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function flipCard(event) {
+            const card = event.target;
+            if (selectedCards.length < 2 && !card.classList.contains('flipped')) {
+                card.classList.add('flipped');
+                selectedCards.push(card);
+
+                if (selectedCards.length === 2) {
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = selectedCards;
+            if (card1.dataset.id === card2.dataset.id) {
+                playerScores[currentPlayer - 1]++;
+                updateScores();
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+            }
+            selectedCards = [];
+
+            if (cards.every(card => card.classList.contains('flipped'))) {
+                endGame();
+            } else if (playerScores.length === 2) {
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                updateCurrentPlayer();
+            }
+        }
+
+        function updateScores() {
+            const player1Score = document.querySelector('.player-score[data-player="1"]');
+            const player2Score = document.querySelector('.player-score[data-player="2"]');
+
+            if (player1Score) player1Score.textContent = `Joueur 1: ${playerScores[0]}`;
+            if (player2Score) player2Score.textContent = `Joueur 2: ${playerScores[1]}`;
+        }
+
+        function updateCurrentPlayer() {
+            const playerIndicators = document.querySelectorAll('.player-indicator');
+            playerIndicators.forEach(indicator => indicator.classList.remove('active'));
+            document.querySelector(`.player-indicator[data-player="${currentPlayer}"]`).classList.add('active');
+        }
+
+        function endGame() {
+            winnerScreen.classList.add('active');
+            if (playerScores[0] > playerScores[1]) {
+                winnerText.textContent = 'Joueur 1 a gagné!';
+            } else if (playerScores[0] < playerScores[1]) {
+                winnerText.textContent = 'Joueur 2 a gagné!';
+            } else {
+                winnerText.textContent = "C'est un match nul!";
+            }
+        }
+
+        function resetGame() {
+            winnerScreen.classList.remove('active');
+            startGame(playerScores.length);
+        }
+    </script>
+</body>
+</html>

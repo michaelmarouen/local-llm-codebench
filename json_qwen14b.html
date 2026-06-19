@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Formatter & Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: #abb2bf;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        textarea {
+            width: 100%;
+            max-width: 600px;
+            height: 150px;
+            background-color: #313541;
+            color: #abb2bf;
+            border: none;
+            padding: 10px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+        button {
+            background-color: #61afef;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #569cd6;
+        }
+        .error {
+            color: #e06c75;
+            margin-bottom: 10px;
+        }
+        .tree {
+            width: 100%;
+            max-width: 600px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .tree ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        .tree li {
+            cursor: pointer;
+        }
+        .tree .key {
+            color: #d19a66;
+        }
+        .tree .string {
+            color: #c678dd;
+        }
+        .tree .number {
+            color: #e06c75;
+        }
+        .tree .boolean {
+            color: #61afef;
+        }
+        .tree .null {
+            color: #d19a66;
+        }
+    </style>
+</head>
+<body>
+    <h1>JSON Formatter & Viewer</h1>
+    <textarea id="jsonInput" placeholder="Entrez votre JSON ici..."></textarea>
+    <div>
+        <button onclick="formatJson()">Formater</button>
+        <button onclick="minifyJson()">Minifier</button>
+    </div>
+    <div class="error" id="errorMessage"></div>
+    <div class="tree" id="jsonTree"></div>
+
+    <script>
+        function formatJson() {
+            const input = document.getElementById('jsonInput').value;
+            try {
+                const json = JSON.parse(input);
+                document.getElementById('jsonInput').value = JSON.stringify(json, null, 4);
+                document.getElementById('errorMessage').textContent = '';
+                renderTree(json);
+            } catch (e) {
+                document.getElementById('errorMessage').textContent = `Erreur de syntaxe JSON: ${e.message}`;
+            }
+        }
+
+        function minifyJson() {
+            const input = document.getElementById('jsonInput').value;
+            try {
+                const json = JSON.parse(input);
+                document.getElementById('jsonInput').value = JSON.stringify(json);
+                document.getElementById('errorMessage').textContent = '';
+                renderTree(json);
+            } catch (e) {
+                document.getElementById('errorMessage').textContent = `Erreur de syntaxe JSON: ${e.message}`;
+            }
+        }
+
+        function renderTree(obj, depth = 0) {
+            const treeContainer = document.getElementById('jsonTree');
+            treeContainer.innerHTML = '';
+            if (typeof obj === 'object' && obj !== null) {
+                const ul = document.createElement('ul');
+                for (const key in obj) {
+                    const li = document.createElement('li');
+                    li.textContent = `${key}: `;
+                    const spanKey = document.createElement('span');
+                    spanKey.className = 'key';
+                    spanKey.textContent = key;
+                    li.appendChild(spanKey);
+                    li.appendChild(renderValue(obj[key], depth + 1));
+                    ul.appendChild(li);
+                }
+                treeContainer.appendChild(ul);
+            } else {
+                treeContainer.appendChild(renderValue(obj, depth));
+            }
+        }
+
+        function renderValue(value, depth) {
+            const span = document.createElement('span');
+            if (typeof value === 'object' && value !== null) {
+                span.textContent = '{...}';
+                span.style.cursor = 'pointer';
+                span.addEventListener('click', () => {
+                    span.parentNode.innerHTML = '';
+                    for (const key in value) {
+                        const li = document.createElement('li');
+                        li.textContent = `${key}: `;
+                        const spanKey = document.createElement('span');
+                        spanKey.className = 'key';
+                        spanKey.textContent = key;
+                        li.appendChild(spanKey);
+                        li.appendChild(renderValue(value[key], depth + 1));
+                        span.parentNode.appendChild(li);
+                    }
+                });
+            } else if (typeof value === 'string') {
+                span.className = 'string';
+                span.textContent = `"${value}"`;
+            } else if (typeof value === 'number') {
+                span.className = 'number';
+                span.textContent = value;
+            } else if (typeof value === 'boolean') {
+                span.className = 'boolean';
+                span.textContent = value ? 'true' : 'false';
+            } else if (value === null) {
+                span.className = 'null';
+                span.textContent = 'null';
+            }
+            return span;
+        }
+    </script>
+</body>
+</html>

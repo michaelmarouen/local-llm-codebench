@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Memory Pro</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --card-back: #2c3e50;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --accent: #00bcd4;
+            --accent-hover: #26c6da;
+            --p1-color: #ff5252;
+            --p2-color: #448aff;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- UI Components --- */
+        header {
+            width: 100%;
+            padding: 1rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid #333;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--accent), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        button {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 0.5rem 1.2rem;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        button.active {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* --- Game Area --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .player-score {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            background: #1e1e1e;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .player-score.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .p1-active { border-color: var(--p1-color); color: var(--p1-color); }
+        .p2-active { border-color: var(--p2-color); color: var(--p2-color); }
+
+        .score-val { font-size: 1.5rem; }
+        .label { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); }
+
+        /* --- Grid --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            perspective: 1000px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* --- Cards --- */
+        .card {
+            background-color: transparent;
+            aspect-ratio: 3/4;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+            cursor: default;
+        }
+
+        .card.matched {
+            transform: rotateY(180deg) scale(0.95);
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card-front {
+            background-color: var(--card-bg);
+            border: 2px solid #333;
+        }
+
+        .card-back {
+            background-color: var(--card-back);
+            transform: rotateY(180deg);
+            border: 2px solid var(--accent);
+        }
+
+        /* --- SVG Shapes --- */
+        .shape {
+            width: 60%;
+            height: 60%;
+        }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: #1e1e1e;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #333;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: var(--accent);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal p {
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .winner-text {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* --- Responsive Tweaks --- */
+        @media (min-width: 600px) {
+            .grid-container {
+                gap: 1.5rem;
+            }
+            .card-face {
+                border-radius: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Memory Pro</h1>
+        <div class="controls">
+            <button id="btn-p1" class="active" onclick="setMode('1')">1 Joueur</button>
+            <button id="btn-p2" onclick="setMode('2')">2 Joueurs</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="status-bar" id="status-bar">
+            <!-- Dynamic Content -->
+        </div>
+
+        <div class="grid-container" id="grid">
+            <!-- Cards generated by JS -->
+        </div>
+    </main>
+
+    <!-- Victory Modal -->
+    <div class="modal-overlay" id="victory-modal">
+        <div class="modal">
+            <h2 id="modal-title">Victoire !</h2>
+            <div id="winner-display" class="winner-text"></div>
+            <p id="modal-msg">Temps: 00:00 | Coups: 0</p>
+            <button onclick="initGame()">Rejouer</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const COLORS = [
+            '#FF5252', '#448AFF', '#69F0AE', '#E040FB', 
+            '#FFD740', '#FF6E40', '#00E676', '#FF1744'
+        ];
+        
+        // Shapes definitions (SVG paths)
+        const SHAPES = [
+            '<circle cx="50" cy="50" r="30" />',
+            '<rect x="25" y="25" width="50" height="50" rx="5" />',
+            '<polygon points="50,15 90,85 10,85" />',
+            '<path d="M50 20 L80 70 L20 70 Z" />',
+            '<circle cx="50" cy="50" r="15" stroke-width="10" stroke="#fff" fill="none"/>',
+            '<rect x="35" y="35" width="30" height="30" transform="rotate(45 50 50)" />',
+            '<path d="M50 10 L90 50 L50 90 L10 50 Z" />',
+            '<circle cx="50" cy="50" r="20" stroke-width="8" stroke="#fff" fill="none" stroke-dasharray="10 5"/>'
+        ];
+
+        // --- State ---
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let totalPairs = 8;
+        let moves = 0;
+        let timer = 0;
+        let timerInterval = null;
+        let isLocked = false;
+        let mode = '1'; // '1' or '2'
+        
+        // 2 Player State
+        let p1Score = 0;
+        let p2Score = 0;
+        let currentPlayer = 1;
+
+        // --- DOM Elements ---
+        const gridEl = document.getElementById('grid');
+        const statusBarEl = document.getElementById('status-bar');
+        const modalEl = document.getElementById('victory-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const winnerDisplay = document.getElementById('winner-display');
+        const modalMsg = document.getElementById('modal-msg');
+        const btnP1 = document.getElementById('btn-p1');
+        const btnP2 = document.getElementById('btn-p2');
+
+        // --- Initialization ---
+        function setMode(m) {
+            mode = m;
+            if (m === '1') {
+                btnP1.classList.add('active');
+                btnP2.classList.remove('active');
+            } else {
+                btnP1.classList.remove('active');
+                btnP2.classList.add('active');
+            }
+            initGame();
+        }
+
+        function initGame() {
+            // Reset State
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            timer = 0;
+            isLocked = false;
+            clearInterval(timerInterval);
+            modalEl.classList.remove('open');
+            
+            // Reset Scores
+            if (mode === '2') {
+                p1Score = 0;
+                p2Score = 0;
+                currentPlayer = 1;
+                updateScoreBoard();
+            }
+
+            // Generate Deck
+            const deck = [];
+            for (let i = 0; i < totalPairs; i++) {
+                deck.push({ id: i, color: COLORS[i], shape: SHAPES[i] });
+                deck.push({ id: i, color: COLORS[i], shape: SHAPES[i] });
+            }
+            // Shuffle
+            deck.sort(() => Math.random() - 0.5);
+
+            // Render Grid
+            gridEl.innerHTML = '';
+            deck.forEach((cardData, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.id = cardData.id;
+                card.dataset.index = index;
+                
+                // Ensure touch target is large enough
+                card.style.minWidth = '44px';
+                card.style.minHeight = '44px';
+
+                card.innerHTML = `
+                    <div class="card-face card-front"></div>
+                    <div class="card-face card-back">
+                        <svg class="shape" viewBox="0 0 100 100" style="fill: ${cardData.color}">
+                            ${cardData.shape}
+                        </svg>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => flipCard(card));
+                gridEl.appendChild(card);
+            });
+
+            startTimer();
+        }
+
+        // --- Game Logic ---
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timer++;
+                updateStatusBar();
+            }, 1000);
+        }
+
+        function updateStatusBar() {
+            if (mode === '1') {
+                statusBarEl.innerHTML = `
+                    <div class="player-score" style="border-color: var(--accent)">
+                        <div class="label">Temps</div>
+                        <div class="score-val">${formatTime(timer)}</div>
+                    </div>
+                    <div class="player-score" style="border-color: var(--text-muted)">
+                        <div class="label">Coups</div>
+                        <div class="score-val">${moves}</div>
+                    </div>
+                `;
+            } else {
+                updateScoreBoard();
+            }
+        }
+
+        function updateScoreBoard() {
+            const p1Class = currentPlayer === 1 ? 'p1-active' : '';
+            const p2Class = currentPlayer === 2 ? 'p2-active' : '';
+
+            statusBarEl.innerHTML = `
+                <div class="player-score p1-active">
+                    <div class="label">Joueur 1</div>
+                    <div class="score-val">${p1Score}</div>
+                </div>
+                <div class="player-score p2-active">
+                    <div class="label">Joueur 2</div>
+                    <div class="score-val">${p2Score}</div>
+                </div>
+            `;
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function flipCard(card) {
+            if (isLocked) return;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isLocked = true;
+            const [c1, c2] = flippedCards;
+            const match = c1.dataset.id === c2.dataset.id;
+
+            if (match) {
+                handleMatch(c1, c2);
+            } else {
+                handleMismatch(c1, c2);
+            }
+        }
+
+        function handleMatch(c1, c2) {
+            setTimeout(() => {
+                c1.classList.add('matched');
+                c2.classList.add('matched');
+                matchedPairs++;
+                flippedCards = [];
+                isLocked = false;
+
+                // Score Logic
+                if (mode === '1') {
+                    // 1 player: just count
+                } else {
+                    if (currentPlayer === 1) p1Score++;
+                    else p2Score++;
+                    updateScoreBoard();
+                    currentPlayer = currentPlayer === 1 ? 2 : 1;
+                }
+
+                if (matchedPairs === totalPairs) {
+                    endGame();
+                }
+            }, 300);
+        }
+
+        function handleMismatch(c1, c2) {
+            setTimeout(() => {
+                c1.classList.remove('flipped');
+                c2.classList.remove('flipped');
+                flippedCards = [];
+                isLocked = false;
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            setTimeout(() => {
+                modalTitle.textContent = "Partie Terminée !";
+                modalMsg.textContent = `Temps: ${formatTime(timer)} | Coups: ${moves}`;
+                
+                if (mode === '2') {
+                    if (p1Score > p2Score) {
+                        winnerDisplay.textContent = "Joueur 1 Gagne !";
+                        winnerDisplay.style.color = "var(--p1-color)";
+                    } else if (p2Score > p1Score) {
+                        winnerDisplay.textContent = "Joueur 2 Gagne !";
+                        winnerDisplay.style.color = "var(--p2-color)";
+                    } else {
+                        winnerDisplay.textContent = "Égalité !";
+                        winnerDisplay.style.color = "var(--text-main)";
+                    }
+                } else {
+                    winnerDisplay.textContent = "Bravo !";
+                    winnerDisplay.style.color = "var(--accent)";
+                }
+                
+                modalEl.classList.add('open');
+            }, 500);
+        }
+
+        // Start
+        initGame();
+
+    </script>
+</body>
+</html>
