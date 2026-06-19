@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualiseur Pathfinding A*</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #333;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(15, 40px);
+    grid-gap: 1px;
+    margin-bottom: 20px;
+  }
+  .cell {
+    width: 40px;
+    height: 40px;
+    background-color: #444;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+  .cell.start { background-color: green; }
+  .cell.goal { background-color: red; }
+  .cell.visited { background-color: blue; }
+  .cell.path { background-color: yellow; }
+  button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid" id="grid"></div>
+<button onclick="resetGrid()">Reset</button>
+<button onclick="runAStar()">Lancer</button>
+
+<script>
+  const grid = document.getElementById('grid');
+  const rows = 15;
+  const cols = 15;
+  let startCell = null;
+  let goalCell = null;
+
+  function createGrid() {
+    for (let i = 0; i < rows * cols; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.addEventListener('click', toggleWall);
+      grid.appendChild(cell);
+    }
+  }
+
+  function toggleWall(event) {
+    const cell = event.target;
+    if (cell.classList.contains('wall')) {
+      cell.classList.remove('wall');
+    } else {
+      cell.classList.add('wall');
+    }
+  }
+
+  function setStartCell(event) {
+    if (startCell) startCell.classList.remove('start');
+    const cell = event.target;
+    cell.classList.add('start');
+    startCell = cell;
+  }
+
+  function setGoalCell(event) {
+    if (goalCell) goalCell.classList.remove('goal');
+    const cell = event.target;
+    cell.classList.add('goal');
+    goalCell = cell;
+  }
+
+  grid.addEventListener('click', (event) => {
+    if (startCell && !startCell.contains(event.target)) setStartCell(event);
+    else if (goalCell && !goalCell.contains(event.target)) setGoalCell(event);
+  });
+
+  function resetGrid() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => cell.classList.remove('wall', 'start', 'goal', 'visited', 'path'));
+    startCell = null;
+    goalCell = null;
+  }
+
+  function runAStar() {
+    if (!startCell || !goalCell) return;
+
+    const gridCells = Array.from(document.querySelectorAll('.cell')).slice(1);
+    const startIndex = gridCells.indexOf(startCell);
+    const goalIndex = gridCells.indexOf(goalCell);
+
+    const openList = [startIndex];
+    const closedList = [];
+    const gScores = new Array(rows * cols).fill(Infinity);
+    gScores[startIndex] = 0;
+    const fScores = new Array(rows * cols).fill(Infinity);
+    fScores[startIndex] = manhattanDistance(startIndex, goalIndex);
+
+    function getNeighbors(index) {
+      const neighbors = [];
+      if (index % cols > 0 && !gridCells[index - 1].classList.contains('wall')) neighbors.push(index - 1); // Gauche
+      if (index % cols < cols - 1 && !gridCells[index + 1].classList.contains('wall')) neighbors.push(index + 1); // Droite
+      if (index >= cols && !gridCells[index - cols].classList.contains('wall')) neighbors.push(index - cols); // Haut
+      if (index < rows * cols - cols && !gridCells[index + cols].classList.contains('wall')) neighbors.push(index + cols); // Bas
+      return neighbors;
+    }
+
+    function manhattanDistance(a, b) {
+      const aRow = Math.floor(a / cols);
+      const aCol = a % cols;
+      const bRow = Math.floor(b / cols);
+      const bCol = b % cols;
+      return Math.abs(aRow - bRow) + Math.abs(aCol - bCol);
+    }
+
+    function getLowestFScore(openList, fScores) {
+      let lowestIndex = openList[0];
+      for (const index of openList) {
+        if (fScores[index] < fScores[lowestIndex]) lowestIndex = index;
+      }
+      return lowestIndex;
+    }
+
+    while (openList.length > 0) {
+      const current = getLowestFScore(openList, fScores);
+      if (current === goalIndex) {
+        reconstructPath(closedList, gridCells);
+        return;
+      }
+
+      openList.splice(openList.indexOf(current), 1);
+      closedList.push(current);
+
+      for (const neighbor of getNeighbors(current)) {
+        if (closedList.includes(neighbor)) continue;
+
+        const tentativeGScore = gScores[current] + 1;
+        if (!openList.includes(neighbor) || tentativeGScore < gScores[neighbor]) {
+          cameFrom[neighbor] = current;
+          gScores[neighbor] = tentativeGScore;
+          fScores[neighbor] = gScores[neighbor] + manhattanDistance(neighbor, goalIndex);
+          if (!openList.includes(neighbor)) openList.push(neighbor);
+        }
+      }
+
+      animatePath(closedList, gridCells);
+    }
+  }
+
+  function reconstructPath(cameFrom, gridCells) {
+    let current = gridCells.indexOf(goalCell);
+    while (current !== null) {
+      gridCells[current].classList.add('path');
+      current = cameFrom[current];
+    }
+  }
+
+  function animatePath(path, gridCells) {
+    path.forEach((index, i) => {
+      setTimeout(() => {
+        gridCells[index].classList.add('visited');
+      }, i * 50);
+    });
+  }
+
+  createGrid();
+</script>
+
+</body>
+</html>

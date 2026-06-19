@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background-color: #444;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 4px;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: #666;
+            border: 1px solid #888;
+            text-align: center;
+            line-height: 30px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .cell.conflict {
+            background-color: #f00;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .controls button {
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="grid" class="grid"></div>
+        <div class="controls">
+            <button onclick="solveSudoku()">Résoudre</button>
+            <button onclick="newGame()">Nouvelle partie</button>
+        </div>
+        <div id="timer" class="controls">0:00</div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        let timer;
+        let startTime;
+
+        function createGrid() {
+            for (let i = 0; i < 81; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                cell.addEventListener('click', selectCell);
+                grid.appendChild(cell);
+            }
+        }
+
+        function selectCell(e) {
+            const selectedCell = e.target;
+            if (selectedCell.textContent !== '') return;
+
+            let value = prompt('Entrez un nombre entre 1 et 9');
+            if (value && value >= 1 && value <= 9) {
+                selectedCell.textContent = value;
+                checkConflicts(selectedCell);
+            }
+        }
+
+        function checkConflicts(cell) {
+            const index = parseInt(cell.dataset.index);
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const blockRow = Math.floor(row / 3) * 3;
+            const blockCol = Math.floor(col / 3) * 3;
+
+            clearConflicts();
+
+            for (let i = 0; i < 9; i++) {
+                if (grid.children[row * 9 + i].textContent === cell.textContent && grid.children[row * 9 + i] !== cell) {
+                    grid.children[row * 9 + i].classList.add('conflict');
+                    cell.classList.add('conflict');
+                }
+                if (grid.children[i * 9 + col].textContent === cell.textContent && grid.children[i * 9 + col] !== cell) {
+                    grid.children[i * 9 + col].classList.add('conflict');
+                    cell.classList.add('conflict');
+                }
+            }
+
+            for (let i = blockRow; i < blockRow + 3; i++) {
+                for (let j = blockCol; j < blockCol + 3; j++) {
+                    if (grid.children[i * 9 + j].textContent === cell.textContent && grid.children[i * 9 + j] !== cell) {
+                        grid.children[i * 9 + j].classList.add('conflict');
+                        cell.classList.add('conflict');
+                    }
+                }
+            }
+        }
+
+        function clearConflicts() {
+            const cells = document.querySelectorAll('.cell.conflict');
+            cells.forEach(cell => cell.classList.remove('conflict'));
+        }
+
+        function solveSudoku() {
+            const board = Array.from(grid.children).map(cell => cell.textContent === '' ? 0 : parseInt(cell.textContent));
+            if (backtrack(board)) {
+                board.forEach((value, index) => grid.children[index].textContent = value || '');
+            } else {
+                alert('Aucune solution trouvée');
+            }
+        }
+
+        function backtrack(board) {
+            const emptyCell = board.indexOf(0);
+            if (emptyCell === -1) return true;
+
+            for (let num = 1; num <= 9; num++) {
+                if (isValid(board, emptyCell, num)) {
+                    board[emptyCell] = num;
+                    if (backtrack(board)) return true;
+                    board[emptyCell] = 0;
+                }
+            }
+
+            return false;
+        }
+
+        function isValid(board, index, num) {
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const blockRow = Math.floor(row / 3) * 3;
+            const blockCol = Math.floor(col / 3) * 3;
+
+            for (let i = 0; i < 9; i++) {
+                if (board[row * 9 + i] === num || board[i * 9 + col] === num ||
+                    board[(blockRow + Math.floor(i / 3)) * 9 + blockCol + i % 3] === num) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function newGame() {
+            clearInterval(timer);
+            grid.innerHTML = '';
+            createGrid();
+            startTime = Date.now();
+            timer = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsedTime / 60);
+            const seconds = elapsedTime % 60;
+            document.getElementById('timer').textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        createGrid();
+    </script>
+</body>
+</html>
